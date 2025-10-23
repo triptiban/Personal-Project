@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-config
+  namespace: ecommerce
+data:
+  MINIO_ENDPOINT: "minio.ecommerce.svc.cluster.local:9000"
+  MINIO_SECURE: "false"
+  MINIO_BUCKET: "ecommerce"
+  RAW_PREFIX: "raw"
+  CURATED_PREFIX: "curated"
