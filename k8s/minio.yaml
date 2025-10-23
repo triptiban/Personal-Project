@@ -3,16 +3,6 @@ kind: Namespace
 metadata:
   name: ecommerce
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: minio-secrets
-  namespace: ecommerce
-type: Opaque
-stringData:
-  MINIO_ROOT_USER: minioadmin
-  MINIO_ROOT_PASSWORD: minioadmin
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -30,21 +20,19 @@ spec:
         - name: minio
           image: quay.io/minio/minio:RELEASE.2024-09-22T00-33-43Z
           args: ["server", "/data", "--console-address", ":9001"]
-          env:
-            - name: MINIO_ROOT_USER
-              valueFrom: { secretKeyRef: { name: minio-secrets, key: MINIO_ROOT_USER } }
-            - name: MINIO_ROOT_PASSWORD
-              valueFrom: { secretKeyRef: { name: minio-secrets, key: MINIO_ROOT_PASSWORD } }
+          # Read credentials from the Secret created in minio-secret.yaml
+          envFrom:
+            - secretRef:
+                name: minio-secrets
           ports:
-            - containerPort: 9000 # S3 API
-            - containerPort: 9001 # Console
+            - containerPort: 9000  # S3 API
+            - containerPort: 9001  # Console
           readinessProbe:
             httpGet: { path: /minio/health/ready, port: 9000 }
             initialDelaySeconds: 10
           livenessProbe:
             httpGet: { path: /minio/health/live, port: 9000 }
             initialDelaySeconds: 30
-          # For Kind: use ephemeral storage to avoid StorageClass hassles
           volumeMounts:
             - name: data
               mountPath: /data
