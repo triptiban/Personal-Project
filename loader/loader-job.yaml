@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: loader-job
+  namespace: ecommerce
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: loader
+          image: loader:0.1
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: minio-config }     # MINIO_* vars
+            - secretRef:    { name: minio-secrets }    # MINIO creds
+            - secretRef:    { name: postgres-secrets } # POSTGRES_* vars
+          env:
+            - name: PG_HOST
+              value: "postgres"                        # service name
+            # Optional: run for a specific date partition
+            # - name: PARTITION_DATE
+            #   value: "2025-10-23"
