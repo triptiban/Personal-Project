@@ -9,25 +9,12 @@ spec:
       restartPolicy: Never
       containers:
         - name: extractor
-          image: python:3.12
-          command: ["bash","-lc"]
-          args:
-            - |
-              pip install --no-cache-dir requests==2.32.3 minio==7.2.7 && \
-              python /app/app.py
-          volumeMounts:
-            - name: code
-              mountPath: /app
+          image: extractor:0.2
+          imagePullPolicy: IfNotPresent
+          command: ["python", "/app/app.py"]
           envFrom:
-            - configMapRef: { name: minio-config }   # your non-secret config (endpoint, bucket, prefixes)
-            - secretRef:    { name: minio-secrets }  # your MinIO creds
+            - configMapRef: { name: minio-config }
+            - secretRef:    { name: minio-secrets }
           env:
             - name: API_BASE
               value: "https://fakestoreapi.com"
-            # optional: override date for re-runs
-            # - name: PARTITION_DATE
-            #   value: "2025-10-23"
-      volumes:
-        - name: code
-          configMap:
-            name: extractor-code

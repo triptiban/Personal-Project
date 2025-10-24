@@ -1,9 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: extractor-code
+  namespace: ecommerce
 data:
   app.py: |
     import os, json, datetime as dt
     import requests
     from minio import Minio
-    from io import BytesIO  # <-- add this
+    from io import BytesIO
 
     API_BASE = os.getenv("API_BASE", "https://fakestoreapi.com")
     MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
@@ -22,7 +27,7 @@ data:
 
     def put_json(client, key, obj):
       b = json.dumps(obj, indent=2).encode("utf-8")
-      stream = BytesIO(b)  # <-- wrap bytes in a stream
+      stream = BytesIO(b)
       client.put_object(
         BUCKET,
         key,
