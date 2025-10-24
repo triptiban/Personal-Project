@@ -1,16 +1,12 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: extractor-code
-  namespace: ecommerce
 data:
   app.py: |
     import os, json, datetime as dt
     import requests
     from minio import Minio
+    from io import BytesIO  # <-- add this
 
-    API_BASE = os.getenv("API_BASE", "https://fakestoreapi.com")  # public demo API
-    MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")                  # e.g. minio.ecommerce.svc.cluster.local:9000
+    API_BASE = os.getenv("API_BASE", "https://fakestoreapi.com")
+    MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
     ACCESS = os.getenv("MINIO_ROOT_USER") or os.getenv("MINIO_ACCESS_KEY")
     SECRET = os.getenv("MINIO_ROOT_PASSWORD") or os.getenv("MINIO_SECRET_KEY")
     SECURE = os.getenv("MINIO_SECURE","false").lower()=="true"
@@ -25,22 +21,26 @@ data:
       return r.json()
 
     def put_json(client, key, obj):
-      b = json.dumps(obj, indent=2).encode()
-      client.put_object(BUCKET, key, data=b, length=len(b))
+      b = json.dumps(obj, indent=2).encode("utf-8")
+      stream = BytesIO(b)  # <-- wrap bytes in a stream
+      client.put_object(
+        BUCKET,
+        key,
+        data=stream,
+        length=len(b),
+        content_type="application/json"
+      )
       print("uploaded", key)
 
     def main():
-      # 1) fetch data from API
       products = fetch("products")
       users    = fetch("users")
       carts    = fetch("carts")
 
-      # 2) connect to MinIO (S3-compatible)
       client = Minio(MINIO_ENDPOINT, ACCESS, SECRET, secure=SECURE)
       if not client.bucket_exists(BUCKET):
         client.make_bucket(BUCKET)
 
-      # 3) write into raw/date=YYYY-MM-DD/
       base = f"{RAW_PREFIX}/date={PARTITION_DATE}"
       put_json(client, f"{base}/products.json", products)
       put_json(client, f"{base}/users.json", users)
