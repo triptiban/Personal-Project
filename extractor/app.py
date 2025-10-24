@@ -1,0 +1,41 @@
+import os, json, datetime as dt
+import requests
+from minio import Minio
+from io import BytesIO
+
+API_BASE = os.getenv("API_BASE", "https://fakestoreapi.com")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
+ACCESS = os.getenv("MINIO_ROOT_USER") or os.getenv("MINIO_ACCESS_KEY")
+SECRET = os.getenv("MINIO_ROOT_PASSWORD") or os.getenv("MINIO_SECRET_KEY")
+SECURE = os.getenv("MINIO_SECURE","false").lower()=="true"
+BUCKET = os.getenv("MINIO_BUCKET","ecommerce")
+RAW_PREFIX = os.getenv("RAW_PREFIX","raw")
+PARTITION_DATE = os.getenv("PARTITION_DATE", dt.date.today().isoformat())
+
+def fetch(endpoint):
+    r = requests.get(f"{API_BASE}/{endpoint}", timeout=30)
+    r.raise_for_status()
+    return r.json()
+
+def put_json(client, key, obj):
+    b = json.dumps(obj, indent=2).encode("utf-8")
+    stream = BytesIO(b)
+    client.put_object(BUCKET, key, data=stream, length=len(b), content_type="application/json")
+    print("uploaded", key)
+
+def main():
+    products = fetch("products")
+    users    = fetch("users")
+    carts    = fetch("carts")
+
+    client = Minio(MINIO_ENDPOINT, ACCESS, SECRET, secure=SECURE)
+    if not client.bucket_exists(BUCKET):
+        client.make_bucket(BUCKET)
+
+    base = f"{RAW_PREFIX}/date={PARTITION_DATE}"
+    put_json(client, f"{base}/products.json", products)
+    put_json(client, f"{base}/users.json", users)
+    put_json(client, f"{base}/carts.json", carts)
+
+if __name__ == "__main__":
+    main()
