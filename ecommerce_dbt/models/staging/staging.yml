@@ -1,0 +1,24 @@
+version: 2
+models:
+  - name: stg_products
+    description: Cleaned products from raw schema
+    columns:
+      - name: product_id
+        tests: [not_null, unique]
+  - name: stg_users
+    description: Cleaned users from raw schema
+    columns:
+      - name: user_id
+        tests: [not_null, unique]
+  - name: stg_carts
+    description: Cleaned carts from raw schema
+    columns:
+      - name: cart_id
+        tests: [not_null, unique]
+  - name: stg_cart_items
+    description: Cleaned cart items from raw schema
+    columns:
+      - name: cart_id
+        tests: [not_null]
+      - name: product_id
+        tests: [not_null]

@@ -1,0 +1,12 @@
+ecommerce_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      port: 55432
+      user: warehouse
+      password: warehouse_pwd
+      dbname: warehouse_db
+      schema: analytics
+      threads: 4

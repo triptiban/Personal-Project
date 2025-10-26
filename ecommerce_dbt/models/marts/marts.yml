@@ -1,0 +1,22 @@
+version: 2
+models:
+  - name: dim_product
+    description: Product dimension
+    columns:
+      - name: product_id
+        tests: [not_null, unique]
+  - name: dim_customer
+    description: Customer dimension
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+  - name: fct_sales
+    description: Sales fact (incremental)
+    columns:
+      - name: cart_id
+        tests: [not_null]
+      - name: product_id
+        tests:
+          - relationships:
+              to: ref('dim_product')
+              field: product_id
