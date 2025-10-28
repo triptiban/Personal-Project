@@ -7,17 +7,19 @@ on:
 
 jobs:
   build:
-    name: Build (optional)
+    name: Build Docker images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Build images (optional)
+
+      - name: Build images
         run: |
           docker build -t extractor:ci ./extractor
-          docker build -t loader:ci    ./loader
-          docker build -t dbt-runner:ci ./dbt-runner
-          docker build -t exporter:ci  ./exporter
+          docker build -t loader:ci ./loader
+          # Important fix: build dbt-runner using full repo context
+          docker build -t dbt-runner:ci -f dbt-runner/Dockerfile .
+          docker build -t exporter:ci ./exporter
 
   dbt-tests:
     name: dbt compile & tests
@@ -25,15 +27,23 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev build-essential
+
       - name: Install dbt
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           pip install "dbt-postgres==1.8.6"
-      - name: dbt deps/compile/test
+
+      - name: dbt deps / compile / test
         working-directory: ./dbt-runner
         env:
           DBT_PROFILES_DIR: .
