@@ -12,12 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-
       - name: Build images
         run: |
           docker build -t extractor:ci ./extractor
           docker build -t loader:ci ./loader
-          # Important fix: build dbt-runner using full repo context
+          # Build dbt-runner from repo root so COPY dbt-runner/... works
           docker build -t dbt-runner:ci -f dbt-runner/Dockerfile .
           docker build -t exporter:ci ./exporter
 
@@ -27,22 +26,18 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Install system dependencies
+      - name: System deps for dbt-postgres
         run: |
           sudo apt-get update
           sudo apt-get install -y libpq-dev build-essential
-
       - name: Install dbt
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install "dbt-postgres==1.8.6"
-
       - name: dbt deps / compile / test
         working-directory: ./dbt-runner
         env:
@@ -51,3 +46,21 @@ jobs:
           dbt deps || true
           dbt compile
           dbt test --select tag:critical || true
+
+  run-k8s-pipeline:
+    name: Run K8s pipeline (self-hosted)
+    runs-on: self-hosted
+    needs: dbt-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure dbt profiles ConfigMap exists
+        run: |
+          kubectl create configmap dbt-profiles \
+            --from-file=profiles.yml=./dbt-runner/profiles.yml \
+            -n ecommerce --dry-run=client -o yaml | kubectl apply -f -
+      - name: Execute end-to-end pipeline
+        env:
+          NS: ecommerce
+        run: |
+          chmod +x scripts/rerun-all.sh
+          NS=ecommerce ./scripts/rerun-all.sh
