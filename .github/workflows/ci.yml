@@ -5,11 +5,6 @@ on:
     branches: [ "main" ]
   pull_request:
 
-# If you use a monorepo runner pool, uncomment and set:
-# concurrency:
-#   group: ci-${{ github.ref }}
-#   cancel-in-progress: true
-
 jobs:
   build:
     name: Build Docker images
@@ -17,18 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-
       - name: Build images
         run: |
-          # Build each image using its folder as context
           docker build -t extractor:ci ./extractor
           docker build -t loader:ci    ./loader
           docker build -t exporter:ci  ./exporter
-          # IMPORTANT: dbt-runner Dockerfile copies files from repo root, so build with repo root as context:
+          # IMPORTANT: build dbt-runner from repo root so COPY dbt-runner/... works
           docker build -t dbt-runner:ci -f dbt-runner/Dockerfile .
 
   dbt-tests:
-    name: dbt compile & tests
+    name: dbt compile & tests (stable 1.8.x)
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -44,37 +37,35 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpq-dev build-essential
 
-      - name: Install dbt (Postgres adapter)
+      - name: Install dbt (pin stable versions)
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          # allow pip to resolve a valid 1.8.x adapter that matches dbt-core 1.8.x
-          pip install "dbt-postgres~=1.8.0"
+          pip install "dbt-core==1.8.6" "dbt-postgres==1.8.3"
 
+      # RUN DBT IN THE ACTUAL PROJECT FOLDER
       - name: dbt deps / compile / test
-        working-directory: ./dbt-runner
+        working-directory: ./ecommerce_dbt
         env:
-          DBT_PROFILES_DIR: .
+          # profiles.yml is in dbt-runner/, so point DBT_PROFILES_DIR there
+          DBT_PROFILES_DIR: ../dbt-runner
         run: |
-          dbt deps || true     # fine if no packages.yml
+          dbt deps || true
           dbt compile
           dbt test --select tag:critical || true
 
   run-k8s-pipeline:
     name: Run K8s pipeline (self-hosted)
-    # IMPORTANT: this job runs on your machine/VM where kubectl is already configured.
     runs-on: self-hosted
     needs: dbt-tests
     steps:
       - uses: actions/checkout@v4
 
-      # Ensure the dbt profiles ConfigMap exists in the cluster (idempotent)
       - name: Ensure dbt profiles ConfigMap exists
         run: |
           kubectl create configmap dbt-profiles \
             --from-file=profiles.yml=./dbt-runner/profiles.yml \
             -n ecommerce --dry-run=client -o yaml | kubectl apply -f -
 
-      # Run your exact pipeline script: extractor -> loader -> dbt -> exporter
       - name: Execute end-to-end pipeline
         env:
           NS: ecommerce
