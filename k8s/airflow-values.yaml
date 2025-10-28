@@ -1,0 +1,44 @@
+executor: KubernetesExecutor
+
+# Disable bundled Postgres; use your existing Postgres in the "ecommerce" namespace
+postgresql:
+  enabled: false
+
+# Airflow configuration (sectioned, as in airflow.cfg)
+config:
+  core:
+    load_examples: "False"
+  database:
+    sql_alchemy_conn: "postgresql+psycopg2://warehouse:warehouse@postgres.ecommerce.svc.cluster.local:5432/warehouse_db"
+
+webserver:
+  service:
+    type: NodePort
+  defaultUser:
+    enabled: true
+    username: admin
+    password: admin
+  resources:
+    requests: { cpu: "100m", memory: "256Mi" }
+    limits:   { cpu: "500m", memory: "512Mi" }
+
+scheduler:
+  resources:
+    requests: { cpu: "100m", memory: "256Mi" }
+    limits:   { cpu: "500m", memory: "512Mi" }
+
+triggerer:
+  resources:
+    requests: { cpu: "50m",  memory: "128Mi" }
+    limits:   { cpu: "200m", memory: "256Mi" }
+
+# For the demo, don't persist DAGs/logs (we'll kubectl cp the DAG file)
+dags:
+  persistence:
+    enabled: false
+  gitSync:
+    enabled: false
+
+logs:
+  persistence:
+    enabled: false
