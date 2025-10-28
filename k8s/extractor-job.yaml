@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: extractor-job
+  generateName: extractor-job-
   namespace: ecommerce
 spec:
   template:
