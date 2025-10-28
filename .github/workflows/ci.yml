@@ -26,22 +26,18 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: System deps for dbt-postgres
         run: |
           sudo apt-get update
           sudo apt-get install -y libpq-dev build-essential
-
       - name: Install dbt (pin stable versions)
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install "dbt-core==1.8.6" "dbt-postgres==1.8.3"
-
+          pip install "dbt-core==1.8.6" "dbt-postgres==1.8.2"
       # IMPORTANT: run dbt inside your real project folder
       - name: dbt deps / compile / test
         working-directory: ./ecommerce_dbt
@@ -58,15 +54,11 @@ jobs:
     needs: dbt-tests
     steps:
       - uses: actions/checkout@v4
-
-      # Ensure the dbt profiles ConfigMap exists in the cluster (idempotent)
       - name: Ensure dbt profiles ConfigMap exists
         run: |
           kubectl create configmap dbt-profiles \
             --from-file=profiles.yml=./dbt-runner/profiles.yml \
             -n ecommerce --dry-run=client -o yaml | kubectl apply -f -
-
-      # Run your exact pipeline script: extractor -> loader -> dbt -> exporter
       - name: Execute end-to-end pipeline
         env:
           NS: ecommerce
