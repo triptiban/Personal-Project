@@ -1,0 +1,50 @@
+# K8s/dbt-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: dbt-job-
+  namespace: ecommerce
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  activeDeadlineSeconds: 1800
+  template:
+    metadata:
+      labels:
+        app: dbt
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: dbt
+          image: dbt-runner:0.1           # <- use the image you built/loaded
+          imagePullPolicy: IfNotPresent
+          workingDir: /work/ecommerce_dbt
+          env:
+            # ----- Postgres connection for profiles.yml -----
+            - { name: PG_HOST, value: "postgres" }  # K8s Service name (NOT localhost)
+            - name: PG_DB
+              valueFrom: { secretKeyRef: { name: postgres-secrets, key: POSTGRES_DB } }
+            - name: PG_USER
+              valueFrom: { secretKeyRef: { name: postgres-secrets, key: POSTGRES_USER } }
+            - name: PG_PASS
+              valueFrom: { secretKeyRef: { name: postgres-secrets, key: POSTGRES_PASSWORD } }
+
+            # dbt profile location
+            - { name: DBT_PROFILES_DIR, value: /etc/dbt }
+
+          volumeMounts:
+            - name: dbt-profiles
+              mountPath: /etc/dbt
+              readOnly: true
+
+          command: ["/bin/sh","-lc"]
+          args:
+            - >
+              set -euo pipefail;
+              dbt deps &&
+              dbt build --no-write-json   # remove -q so you see full logs
+
+      volumes:
+        - name: dbt-profiles
+          configMap:
+            name: dbt-profiles
