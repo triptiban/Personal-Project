@@ -20,45 +20,58 @@ jobs:
           # Build dbt-runner from repo root so COPY dbt-runner/... works
           docker build -t dbt-runner:ci -f dbt-runner/Dockerfile .
 
-  dbt-tests:
-    name: dbt compile & tests (1.8.x)
+  dbt-compile:
+    name: dbt compile (no DB)
     runs-on: ubuntu-latest
     needs: build
+    env:
+      # Dummy envs so profiles.yml parses; compile does not connect
+      PG_HOST: localhost
+      PG_PORT: "5432"
+      PG_USER: warehouse
+      PG_PASSWORD: password
+      PG_DB: warehouse_db
+      PG_SCHEMA: analytics
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: System deps for dbt-postgres
         run: |
           sudo apt-get update
           sudo apt-get install -y libpq-dev build-essential
+
       - name: Install dbt (pin stable versions)
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install "dbt-core==1.8.6" "dbt-postgres==1.8.2"
-      # IMPORTANT: run dbt inside your real project folder
-      - name: dbt deps / compile / test
+
+      
+      - name: dbt deps / compile
         working-directory: ./ecommerce_dbt
         env:
           DBT_PROFILES_DIR: ../dbt-runner
         run: |
           dbt deps || true
           dbt compile
-          dbt test --select tag:critical || true
 
   run-k8s-pipeline:
-    name: Run K8s pipeline (self-hosted)
+    name: Run K8s pipeline (self-hosted; runs dbt build/tests in cluster)
     runs-on: self-hosted
-    needs: dbt-tests
+    needs: dbt-compile
     steps:
       - uses: actions/checkout@v4
+
       - name: Ensure dbt profiles ConfigMap exists
         run: |
           kubectl create configmap dbt-profiles \
             --from-file=profiles.yml=./dbt-runner/profiles.yml \
             -n ecommerce --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Execute end-to-end pipeline
         env:
           NS: ecommerce
