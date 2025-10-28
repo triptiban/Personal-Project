@@ -1,0 +1,13 @@
+# dbt-runner/profiles.yml
+ecommerce_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('PG_HOST') }}"
+      user: "{{ env_var('PG_USER') }}"
+      password: "{{ env_var('PG_PASS') }}"
+      dbname: "{{ env_var('PG_DB') }}"
+      schema: analytics
+      port: 5432
+      threads: 4
