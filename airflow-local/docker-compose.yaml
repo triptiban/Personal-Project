@@ -14,7 +14,7 @@ services:
       - "5433:5432"
 
   webserver:
-    build: .
+    image: apache/airflow:2.10.2
     command: webserver
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -36,28 +36,30 @@ services:
       timeout: 5s
       retries: 40
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-      - ~/.kube:/opt/airflow/.kube:ro
-    #environment:
-     #KUBECONFIG: /opt/airflow/.kube/config
+      - ./airflow-local/dags:/opt/airflow/dags:rw
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - $HOME/.kube:/opt/airflow/.kube:ro
 
   scheduler:
-    build: .
+    image: apache/airflow:2.10.2
     command: scheduler
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__PARALLELISM: "8"
+      AIRFLOW__CORE__DAG_CONCURRENCY: "8"
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       KUBECONFIG: /opt/airflow/.kube/config
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-      - ~/.kube:/opt/airflow/.kube:ro
-    #environment:
-      #KUBECONFIG: /opt/airflow/.kube/config
+      - ./airflow-local/dags:/opt/airflow/dags:rw
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - $HOME/.kube:/opt/airflow/.kube:ro
+
+volumes:
+  airflow_logs: {}
+  airflow_plugins: {}
