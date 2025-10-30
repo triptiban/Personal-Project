@@ -16,7 +16,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: dbt
-          image: dbt-runner:0.1           # <- use the image you built/loaded
+          image: dbt-runner:0.1          
           imagePullPolicy: IfNotPresent
           workingDir: /work/ecommerce_dbt
           env:

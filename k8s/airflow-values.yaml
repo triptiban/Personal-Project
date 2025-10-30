@@ -1,10 +1,10 @@
 executor: KubernetesExecutor
 
-# Disable bundled Postgres; use your existing Postgres in the "ecommerce" namespace
+
 postgresql:
   enabled: false
 
-# Airflow configuration (sectioned, as in airflow.cfg)
+
 config:
   core:
     load_examples: "False"
@@ -32,7 +32,6 @@ triggerer:
     requests: { cpu: "50m",  memory: "128Mi" }
     limits:   { cpu: "200m", memory: "256Mi" }
 
-# For the demo, don't persist DAGs/logs (we'll kubectl cp the DAG file)
 dags:
   persistence:
     enabled: false

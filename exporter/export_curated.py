@@ -7,7 +7,7 @@ from datetime import date
 run_date = date.today().isoformat()
 object_name = f"{CURATED_PREFIX}/run_date={run_date}/{table.replace('.', '_')}.csv"
 
-# No hardcoded defaults; rely entirely on environment variables
+
 MINIO_ENDPOINT = os.environ["MINIO_ENDPOINT"]
 MINIO_ACCESS_KEY = os.environ["MINIO_ACCESS_KEY"]
 MINIO_SECRET_KEY = os.environ["MINIO_SECRET_KEY"]

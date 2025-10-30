@@ -20,7 +20,6 @@ spec:
         - name: minio
           image: quay.io/minio/minio:RELEASE.2024-09-22T00-33-43Z
           args: ["server", "/data", "--console-address", ":9001"]
-          # Read credentials from the Secret created in minio-secret.yaml
           envFrom:
             - secretRef:
                 name: minio-secrets
@@ -38,7 +37,7 @@ spec:
               mountPath: /data
       volumes:
         - name: data
-          emptyDir: {}   # swap to a PVC later if you want persistence
+          emptyDir: {}   
 ---
 apiVersion: v1
 kind: Service

@@ -17,7 +17,4 @@ spec:
             - secretRef:    { name: postgres-secrets } # POSTGRES_* vars
           env:
             - name: PG_HOST
-              value: "postgres"                        # service name
-            # Optional: run for a specific date partition
-            # - name: PARTITION_DATE
-            #   value: "2025-10-23"
+              value: "postgres"                    
