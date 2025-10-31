@@ -9,7 +9,8 @@ spec:
       restartPolicy: Never
       containers:
         - name: exporter
-          image: exporter:0.1
+          image: exporter:0.4
+          imagePullPolicy: Never
           env:
             - name: MINIO_ENDPOINT
               value: minio.ecommerce.svc.cluster.local:9000
