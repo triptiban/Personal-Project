@@ -15,6 +15,25 @@ All components run as Kubernetes workloads and are portable across local or clou
 
 ## ⚙️ Architecture
 
+flowchart LR
+  subgraph ns["Kubernetes Namespace: ecommerce"]
+    API[Public API<br/>(fakestoreapi.com)]
+    EX[Extractor Job<br/>(API → MinIO/raw)]
+    MINIO[(MinIO<br/>Buckets: raw/, curated/)]
+    LD[Loader Job<br/>(MinIO/raw → Postgres/raw.*)]
+    PG[(Postgres DWH<br/>Schemas: raw, staging, intermediate, analytics, snapshots)]
+    DBT[dbt Job<br/>(snapshot → build → docs)]
+    EXP[Exporter Job (optional)<br/>(analytics → MinIO/curated)]
+  end
+
+  API --> EX --> MINIO
+  MINIO --> LD --> PG
+  PG --> DBT
+  DBT --> PG
+  DBT -->|docs| DOCS[[dbt docs (target/)]]
+  DBT --> EXP --> MINIO
+
+
 Public API → Extractor(Job) → MinIO (raw/date=YYYY-MM-DD/)
 │
 ▼
@@ -318,24 +337,6 @@ kubectl -n "$NS" logs -l app=loader    -f --since=1h || true
 kubectl -n "$NS" logs -l app=dbt       -f --since=1h || true
 kubectl -n "$NS" logs -l app=exporter  -f --since=1h || true
 
-
-flowchart LR
-  subgraph ns["Kubernetes Namespace: ecommerce"]
-    API[Public API<br/>(fakestoreapi.com)]
-    EX[Extractor Job<br/>(API → MinIO/raw)]
-    MINIO[(MinIO<br/>Buckets: raw/, curated/)]
-    LD[Loader Job<br/>(MinIO/raw → Postgres/raw.*)]
-    PG[(Postgres DWH<br/>Schemas: raw, staging, intermediate, analytics, snapshots)]
-    DBT[dbt Job<br/>(snapshot → build → docs)]
-    EXP[Exporter Job (optional)<br/>(analytics → MinIO/curated)]
-  end
-
-  API --> EX --> MINIO
-  MINIO --> LD --> PG
-  PG --> DBT
-  DBT --> PG
-  DBT -->|docs| DOCS[[dbt docs (target/)]]
-  DBT --> EXP --> MINIO
 
 
 ✅ Gaps Checklist (what’s optional / to polish)
