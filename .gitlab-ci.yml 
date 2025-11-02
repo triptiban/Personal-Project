@@ -1,0 +1,69 @@
+stages: [build, test, deploy, transform]
+
+variables:
+  DOCKER_BUILDKIT: 1
+  KUBECONFIG: /root/.kube/config
+
+# ------------------
+# 1️⃣ Build images
+# ------------------
+build:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - echo "Building Docker images..."
+    - docker build -t extractor:$CI_COMMIT_SHORT_SHA ./extractor
+    - docker build -t loader:$CI_COMMIT_SHORT_SHA ./loader
+    - docker build -t exporter:$CI_COMMIT_SHORT_SHA ./exporter
+    - docker build -t dbt-runner:$CI_COMMIT_SHORT_SHA -f dbt-runner/Dockerfile .
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - extractor/
+      - loader/
+      - exporter/
+      - dbt-runner/
+
+# ------------------
+# 2️⃣ Test dbt transformations
+# ------------------
+test:
+  stage: test
+  image: dbt-runner:$CI_COMMIT_SHORT_SHA
+  script:
+    - echo "Running dbt tests..."
+    - cd /work/ecommerce_dbt
+    - dbt deps
+    - dbt build --select state:modified+
+  allow_failure: true
+
+# ------------------
+# 3️⃣ Deploy to Kubernetes (apply infra)
+# ------------------
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - echo "Deploying infrastructure..."
+    - kubectl apply -f K8s/minio.yaml
+    - kubectl apply -f K8s/minio-secret.yaml
+    - kubectl apply -f K8s/minio-config.yaml
+    - kubectl apply -f K8s/postgres-secret.yaml
+    - kubectl apply -f K8s/postgres.yaml
+    - kubectl apply -f K8s/postgres-init.yaml
+
+# ------------------
+# 4️⃣ Run data pipeline Jobs
+# ------------------
+transform:
+  stage: transform
+  image: bitnami/kubectl:latest
+  script:
+    - echo "Running extractor, loader, dbt, exporter Jobs..."
+    - kubectl create -f K8s/extractor-job.yaml
+    - kubectl create -f loader/loader-job.yaml
+    - kubectl create -f K8s/dbt-job.yaml
+    - kubectl create -f K8s/exporter-job.yaml || true
+  when: manual

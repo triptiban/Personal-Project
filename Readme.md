@@ -292,5 +292,4 @@ bash
 Copy code
 kind delete cluster --name ecommerce
 Author: Tripti Bansal
-Role Test: Data Engineering Manager Practical – Angi
 Tech Stack: Kubernetes • Python • MinIO • PostgreSQL • dbt • Docker • Airflow (optional)
