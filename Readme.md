@@ -15,6 +15,8 @@ All components run as Kubernetes workloads and are portable across local or clou
 
 ## ⚙️ Architecture
 
+
+End-to-end pipeline
 ```mermaid
 flowchart TD
     %% Direction: top-down (prevents overlap)
@@ -37,8 +39,7 @@ flowchart TD
     DBT --> EXP --> MINIO
 ```
 
-
-
+dbt layers + snapshots
 ```mermaid
 flowchart TB
   RAW["raw.* (loaded)"]
