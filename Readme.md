@@ -259,6 +259,65 @@ bash
 kubectl -n ecommerce logs job/<job-name>
 Optional: integrate Prometheus annotations or Grafana dashboards
 
+## 🔁 One-shot Rerun Script
+
+This repo includes a helper script to **re-run the full pipeline end-to-end** with fresh Jobs (because our Job manifests use `metadata.generateName`).
+
+**Script:** `scripts/rerun-all.sh`
+
+**What it does:**
+1. Deletes any completed Jobs for `extractor`, `loader`, `dbt`, `exporter`
+2. Recreates each Job (using `kubectl create`)
+3. Streams logs so you can watch progress
+
+**Usage:**
+```bash
+# make it executable once
+chmod +x scripts/rerun-all.sh
+
+# run it (assumes namespace "ecommerce")
+./scripts/rerun-all.sh
+Expected output:
+
+New Job names like extractor-job-xxxxx, loader-job-yyyyy, etc.
+
+Logs for each job in order.
+
+Non-zero exit code if any Job fails.
+
+Notes:
+
+The script assumes the namespace is ecommerce and that all infra (MinIO/Postgres/Secrets/ConfigMaps) has already been applied.
+
+If you edit Job YAMLs, the script will delete old Jobs and create new ones so you always get a clean run.
+
+bash
+Copy code
+
+If your script doesn’t already do the deletes/creates, here’s the core it should include (you can compare and adjust):
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+NS=${NS:-ecommerce}
+
+echo "Deleting old Jobs…"
+kubectl -n "$NS" delete job -l 'app in (extractor,loader,dbt,exporter)' --ignore-not-found
+
+echo "Creating fresh Jobs…"
+kubectl -n "$NS" create -f K8s/extractor-config.yaml
+kubectl -n "$NS" create -f K8s/extractor-job.yaml
+kubectl -n "$NS" create -f loader/loader-job.yaml
+kubectl -n "$NS" create -f K8s/dbt-job.yaml
+kubectl -n "$NS" create -f K8s/exporter-job.yaml || true
+
+echo "Tailing logs… (Ctrl+C to stop)"
+kubectl -n "$NS" logs -l app=extractor -f --since=1h || true
+kubectl -n "$NS" logs -l app=loader    -f --since=1h || true
+kubectl -n "$NS" logs -l app=dbt       -f --since=1h || true
+kubectl -n "$NS" logs -l app=exporter  -f --since=1h || true
+
 ✅ Gaps Checklist (what’s optional / to polish)
 Area	Status	Notes
 GitLab CI	🔧 Required	.gitlab-ci.yml provided above

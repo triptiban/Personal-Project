@@ -42,7 +42,9 @@ spec:
             - >
               set -euo pipefail;
               dbt deps &&
-              dbt build --no-write-json   # remove -q so you see full logs
+              dbt snapshot &&   
+              dbt build --no-write-json &&
+              dbt docs generate
 
       volumes:
         - name: dbt-profiles
