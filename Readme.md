@@ -33,7 +33,10 @@ flowchart LR
   PG --> DBT
   DBT --> PG
   DBT --> DOCS
-  DBT --> EXP --> MINIO```
+  DBT --> EXP --> MINIO
+```
+
+
 
 ```mermaid
   flowchart TB
