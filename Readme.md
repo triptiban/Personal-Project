@@ -24,9 +24,7 @@ Loader(Job) → Postgres (raw.*)
 dbt(Job): staging → intermediate → marts
 │
 └── (optional) Exporter(Job) → MinIO (curated/)
-
 yaml
-Copy code
 
 ---
 
@@ -43,29 +41,27 @@ airflow-local/ # Optional: docker-compose Airflow setup
 scripts/ # Helper scripts (e.g., rerun-all.sh)
 
 yaml
-Copy code
+
 
 ---
 
-## 🧩 Prerequisites
+## Prerequisites
 
 - Docker 24+
 - Kubernetes (e.g. Kind, Minikube, or K3D)
 - `kubectl` CLI  
-- Optional: `helm` (if you prefer helm-based Postgres/MinIO)
+- Optional: `helm` 
 - No local Python needed — everything runs in containers
 
 ---
 
-## 🚀 Quickstart (Local Kubernetes)
+## Quickstart (Local Kubernetes)
 
 ### 1️⃣ Create a Kind cluster
 
 ```bash
 kind create cluster --name ecommerce
-2️⃣ Build and load Docker images
-bash
-Copy code
+Build and load Docker images
 docker build -t extractor:0.2 ./extractor
 docker build -t loader:0.2 ./loader
 docker build -t exporter:0.1 ./exporter
@@ -75,12 +71,10 @@ kind load docker-image extractor:0.2 --name ecommerce
 kind load docker-image loader:0.2 --name ecommerce
 kind load docker-image exporter:0.1 --name ecommerce
 kind load docker-image dbt-runner:0.1 --name ecommerce
-🧠 Deployment & Execution
-Deploy Infrastructure (apply once)
-These are long-lived resources — you can safely apply them anytime.
 
-bash
-Copy code
+Deployment & Execution
+
+
 kubectl -n ecommerce apply -f K8s/minio-secret.yaml
 kubectl -n ecommerce apply -f K8s/minio-config.yaml
 kubectl -n ecommerce apply -f K8s/postgres-secret.yaml
@@ -91,42 +85,36 @@ kubectl -n ecommerce apply -f K8s/postgres-init.yaml
 Run the Data Pipeline (Jobs)
 All Jobs use metadata.generateName, so you must use kubectl create (not apply).
 
-🧲 Extract — API → MinIO /raw/
-bash
-Copy code
+Extract — API → MinIO /raw/
+
 kubectl -n ecommerce create -f K8s/extractor-config.yaml
 kubectl -n ecommerce create -f K8s/extractor-job.yaml
 kubectl -n ecommerce logs -l app=extractor -f --since=1h
-📥 Load — MinIO /raw/ → Postgres raw.*
-bash
-Copy code
+Load — MinIO /raw/ → Postgres raw.*
+
 kubectl -n ecommerce create -f loader/loader-job.yaml
 kubectl -n ecommerce logs -l app=loader -f --since=1h
-🧮 Transform (dbt) — staging → intermediate → marts
-bash
-Copy code
+
+Transform (dbt) — staging → intermediate → marts
+
 kubectl -n ecommerce create -f K8s/dbt-job.yaml
 kubectl -n ecommerce logs -l app=dbt -f --since=1h
-📤 (Optional) Export — curated marts → MinIO /curated/
-bash
-Copy code
+(Optional) Export — curated marts → MinIO /curated/
+
 kubectl -n ecommerce create -f K8s/exporter-job.yaml
 kubectl -n ecommerce logs -l app=exporter -f --since=1h
-🔁 Re-running the pipeline
+Re-running the pipeline
 Each Job creates a fresh run (unique name). To re-run cleanly:
 
-bash
-Copy code
 kubectl -n ecommerce delete job -l 'app in (extractor,loader,dbt,exporter)' --ignore-not-found
 Then recreate the Jobs using the same commands above.
 
-🧹 Tear down everything (optional cleanup)
-bash
-Copy code
+Tear down everything (optional cleanup)
+
 kubectl -n ecommerce delete all -l app=minio
 kubectl -n ecommerce delete all -l app=postgres
 kubectl -n ecommerce delete job -l 'app in (extractor,loader,dbt,exporter)' --ignore-not-found
-⚙️ Configuration & Secrets
+Configuration & Secrets
 MinIO
 Defined in:
 
@@ -164,19 +152,16 @@ POSTGRES_PASSWORD	Password (warehouse_pwd)
 
 Port-forward for DBeaver or psql:
 
-bash
-Copy code
+
 kubectl -n ecommerce port-forward svc/postgres 5432:5432
 Connect using:
 
-yaml
-Copy code
 Host: 127.0.0.1
 Port: 5432
 Database: warehouse_db
 User: warehouse
 Password: warehouse_pwd
-🧰 dbt Project (ecommerce_dbt/)
+dbt Project (ecommerce_dbt/)
 Model Layers
 Layer	Purpose
 staging	Raw → typed & cleaned
@@ -224,8 +209,7 @@ GitHub Actions: .github/workflows/ci.yml (already present)
 
 GitLab required by assignment — add .gitlab-ci.yml:
 
-yaml
-Copy code
+
 stages: [build, test, deploy, transform]
 
 build:
@@ -271,7 +255,7 @@ readinessProbe and livenessProbe defined for Postgres & MinIO
 Logs:
 
 bash
-Copy code
+
 kubectl -n ecommerce logs job/<job-name>
 Optional: integrate Prometheus annotations or Grafana dashboards
 
@@ -287,7 +271,7 @@ Snapshots	✅ Included
 Incremental models	✅ fct_sales	
 Docs generation	✅ via dbt Job	
 
-🧼 Cleanup
+Cleanup
 bash
 Copy code
 kind delete cluster --name ecommerce
