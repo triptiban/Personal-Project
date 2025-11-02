@@ -15,6 +15,7 @@ All components run as Kubernetes workloads and are portable across local or clou
 
 ## ⚙️ Architecture
 
+```mermaid
 flowchart LR
   subgraph ns["Kubernetes Namespace: ecommerce"]
     API[Public API<br/>(fakestoreapi.com)]
@@ -31,7 +32,7 @@ flowchart LR
   PG --> DBT
   DBT --> PG
   DBT -->|docs| DOCS[[dbt docs (target/)]]
-  DBT --> EXP --> MINIO
+  DBT --> EXP --> MINIO```
 
 
 Public API → Extractor(Job) → MinIO (raw/date=YYYY-MM-DD/)
