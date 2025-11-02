@@ -357,19 +357,6 @@ kubectl -n "$NS" logs -l app=dbt       -f --since=1h || true
 kubectl -n "$NS" logs -l app=exporter  -f --since=1h || true
 
 
-
-✅ Gaps Checklist (what’s optional / to polish)
-Area	Status	Notes
-GitLab CI	🔧 Required	.gitlab-ci.yml provided above
-Architecture diagram	🔧 Optional	Add docs/architecture.png and embed
-Airflow orchestration	✅ Included (docker-compose)	Optional for bonus points
-Secrets via env	✅ Configured properly	
-Health checks	✅ Basic probes present	
-dbt tests	✅ Included	
-Snapshots	✅ Included	
-Incremental models	✅ fct_sales	
-Docs generation	✅ via dbt Job	
-
 Cleanup
 bash
 Copy code
