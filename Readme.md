@@ -16,25 +16,25 @@ All components run as Kubernetes workloads and are portable across local or clou
 ## ⚙️ Architecture
 
 ```mermaid
-flowchart LR
-  subgraph ns["Kubernetes Namespace: ecommerce"]
+flowchart TD
+    %% Direction: top-down (prevents overlap)
+    %% Title
+    classDef box fill:#eef1ff,stroke:#5b67b2,stroke-width:1px,color:#111,rx:8,ry:8;
 
-    API["Public API (fakestoreapi.com)"]
-    EX["Extractor Job (API → MinIO/ecommerce/raw)"]
-    MINIO["MinIO (bucket: ecommerce) Folders: raw/, curated/"]
-    LD["Loader Job (MinIO/raw → Postgres/raw.*)"]
-    PG["Postgres DWH\nSchemas: raw, staging, intermediate, analytics, snapshots"]
-    DBT["dbt Job (snapshot → build → docs)"]
-    EXP["Exporter Job (analytics → MinIO/ecommerce/curated)"]
-    DOCS["dbt docs (target/)"]
-  end
+    subgraph NS [Kubernetes Namespace: ecommerce]
+        API["Public API (fakestoreapi.com)"]:::box
+        EX["Extractor Job (API → MinIO/ecommerce/raw)"]:::box
+        MINIO["MinIO (bucket: ecommerce)\nFolders: raw/, curated/"]:::box
+        LD["Loader Job (MinIO/raw → Postgres/raw.*)"]:::box
+        PG["Postgres DWH (Schemas: raw, staging, intermediate, analytics, snapshots)"]:::box
+        DBT["dbt Job (snapshots, build, docs)"]:::box
+        EXP["Exporter Job (analytics → MinIO/ecommerce/curated)"]:::box
+        DOCS["dbt Docs (target/)"]:::box
+    end
 
-  API --> EX --> MINIO
-  MINIO --> LD --> PG
-  PG --> DBT
-  DBT --> PG
-  DBT --> DOCS
-  DBT --> EXP --> MINIO
+    %% Flow connections
+    API --> EX --> MINIO --> LD --> PG --> DBT --> DOCS
+    DBT --> EXP --> MINIO
 ```
 
 
