@@ -33,8 +33,9 @@ flowchart LR
   PG --> DBT
   DBT --> PG
   DBT --> DOCS
-  DBT --> EXP --> MINIO
+  DBT --> EXP --> MINIO```
 
+```mermaid
   flowchart TB
   RAW["raw.* (loaded)"]
   STG["staging models\nstg_products, stg_users, stg_carts, stg_cart_items"]
