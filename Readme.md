@@ -18,21 +18,32 @@ All components run as Kubernetes workloads and are portable across local or clou
 ```mermaid
 flowchart LR
   subgraph ns["Kubernetes Namespace: ecommerce"]
-    API[Public API<br/>(fakestoreapi.com)]
-    EX[Extractor Job<br/>(API → MinIO/raw)]
-    MINIO[(MinIO<br/>Buckets: raw/, curated/)]
-    LD[Loader Job<br/>(MinIO/raw → Postgres/raw.*)]
-    PG[(Postgres DWH<br/>Schemas: raw, staging, intermediate, analytics, snapshots)]
-    DBT[dbt Job<br/>(snapshot → build → docs)]
-    EXP[Exporter Job (optional)<br/>(analytics → MinIO/curated)]
+    API["Public API\n(fakestoreapi.com)"]
+    EX["Extractor Job\n(API -> MinIO/raw)"]
+    MINIO["MinIO\nBuckets: raw/, curated/"]
+    LD["Loader Job\n(MinIO/raw -> Postgres/raw.*)"]
+    PG["Postgres DWH\nSchemas: raw, staging, intermediate, analytics, snapshots"]
+    DBT["dbt Job\n(snapshot -> build -> docs)"]
+    EXP["Exporter Job (optional)\n(analytics -> MinIO/curated)"]
+    DOCS["dbt docs\n(target/)"]
   end
 
   API --> EX --> MINIO
   MINIO --> LD --> PG
   PG --> DBT
   DBT --> PG
-  DBT -->|docs| DOCS[[dbt docs (target/)]]
-  DBT --> EXP --> MINIO```
+  DBT --> DOCS
+  DBT --> EXP --> MINIO
+
+  flowchart TB
+  RAW["raw.* (loaded)"]
+  STG["staging models\nstg_products, stg_users, stg_carts, stg_cart_items"]
+  INT["intermediate models\nint_order_items, int_customers"]
+  MARTS["analytics marts\n(dim_product, dim_customer, fct_sales - incremental)"]
+  SNAP["dbt snapshots\n(users_snapshot, products_snapshot)"]
+
+  RAW --> STG --> INT --> MARTS
+  STG --> SNAP```
 
 
 Public API → Extractor(Job) → MinIO (raw/date=YYYY-MM-DD/)
