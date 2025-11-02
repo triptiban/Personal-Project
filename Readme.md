@@ -18,9 +18,10 @@ All components run as Kubernetes workloads and are portable across local or clou
 ```mermaid
 flowchart LR
   subgraph ns["Kubernetes Namespace: ecommerce"]
+
     API["Public API (fakestoreapi.com)"]
     EX["Extractor Job (API → MinIO/ecommerce/raw)"]
-    MINIO["MinIO (bucket: ecommerce)\nFolders: raw/, curated/"]
+    MINIO["MinIO (bucket: ecommerce) Folders: raw/, curated/"]
     LD["Loader Job (MinIO/raw → Postgres/raw.*)"]
     PG["Postgres DWH\nSchemas: raw, staging, intermediate, analytics, snapshots"]
     DBT["dbt Job (snapshot → build → docs)"]
