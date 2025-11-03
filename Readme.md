@@ -1,5 +1,4 @@
-Angi Practical 
-Project Overview
+## Project Overview
 
 This project implements a full end-to-end data engineering pipeline using:
 
@@ -127,7 +126,7 @@ dbt docs serve
 
 ## Quickstart (Local Kubernetes)
 
-### 1️⃣ Create a Kind cluster
+### Create a Kind cluster
 
 ```bash
 kind create cluster --name ecommerce-pipeline
@@ -141,10 +140,11 @@ kind load docker-image extractor:0.2 --name ecommerce-pipeline
 kind load docker-image loader:0.2 --name ecommerce-pipeline
 kind load docker-image exporter:0.1 --name ecommerce-pipeline
 kind load docker-image dbt-runner:0.1 --name ecommerce-pipeline
+```
 
-Deployment & Execution
+## Deployment & Execution
 
-
+```bash
 kubectl -n ecommerce apply -f K8s/minio-secret.yaml
 kubectl -n ecommerce apply -f K8s/minio-config.yaml
 kubectl -n ecommerce apply -f K8s/postgres-secret.yaml
@@ -152,38 +152,44 @@ kubectl -n ecommerce apply -f K8s/postgres-secret.yaml
 kubectl -n ecommerce apply -f K8s/minio.yaml
 kubectl -n ecommerce apply -f K8s/postgres.yaml
 kubectl -n ecommerce apply -f K8s/postgres-init.yaml
+```
 
-Run the Data Pipeline (Jobs)
+## Run the Data Pipeline (Jobs)
 All Jobs use metadata.generateName, so you must use kubectl create (not apply).
 
 Extract — API → MinIO /raw/
 
+```bash
 kubectl -n ecommerce apply -f K8s/extractor-config.yaml
 kubectl -n ecommerce create -f K8s/extractor-job.yaml
 LATEST_EXTRACTOR_JOB=$(kubectl -n ecommerce get jobs -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep '^extractor-job-' | sort | tail -1)
 kubectl -n ecommerce logs -f job/$LATEST_EXTRACTOR_JOB
-
+```
 
 Load — MinIO /raw/ → Postgres raw.*
 
+```bash
 kubectl -n ecommerce create -f loader/loader-job.yaml
 LATEST_LOADER_JOB=$(kubectl -n ecommerce get jobs -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
 | grep '^loader-job-' | sort | tail -1)
 kubectl -n ecommerce logs -f job/$LATEST_LOADER_JOB
-
+```
 Transform (dbt) — staging → intermediate → marts
 
+```bash
 kubectl -n ecommerce create -f K8s/dbt-job.yaml
 kubectl -n ecommerce logs -l app=dbt -f --since=1h
-
+```
 (Optional) Export — curated marts → MinIO /curated/
 
+```bash
 kubectl -n ecommerce create -f K8s/exporter-job.yaml
 LATEST_EXPORTER_JOB=$(kubectl -n ecommerce get jobs -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
   | grep '^exporter-job-' | sort | tail -1)
 kubectl -n ecommerce logs -f job/$LATEST_EXPORTER_JOB
+```
 
-Configuration & Secrets
+## Configuration & Secrets
 MinIO
 Defined in:
 
@@ -200,12 +206,12 @@ CURATED_PREFIX	Curated folder (default: curated/)
 
 Access MinIO console:
 
-bash
-Copy code
+```bash
 kubectl -n ecommerce port-forward svc/minio 9000:9000 9001:9001
 Visit http://localhost:9001 → login with secret credentials.
+``` 
 
-Postgres
+## Postgres
 Defined in:
 
 K8s/postgres-secret.yaml
@@ -221,8 +227,10 @@ POSTGRES_PASSWORD	Password (warehouse_pwd)
 
 Port-forward for DBeaver or psql:
 
-
+```bash
 kubectl -n ecommerce port-forward svc/postgres 5432:5432
+```
+
 Connect using:
 
 Host: 127.0.0.1
@@ -247,17 +255,17 @@ dim_product, dim_customer, fct_sales (incremental)
 Snapshots: snapshots/users_snapshot.sql, snapshots/products_snapshot.sql
 
 Run dbt locally (optional)
-bash
-Copy code
+```bash
 docker run --rm -it -p 8080:8080 \
   -e PG_HOST=localhost -e PG_DB=warehouse_db \
   -e PG_USER=warehouse -e PG_PASSWORD=warehouse_pwd \
   dbt-runner:0.1 bash -lc "cd /work/ecommerce_dbt && dbt docs serve --port 8080 --no-browser"
+```
 Open http://localhost:8080 to browse dbt docs.
 
 🧾 Example Queries
 sql
-Copy code
+
 -- Top 10 products by revenue
 SELECT p.title, SUM(s.line_amount) AS revenue
 FROM analytics.fct_sales s
@@ -323,10 +331,9 @@ readinessProbe and livenessProbe defined for Postgres & MinIO
 
 Logs:
 
-bash
-
+```bash
 kubectl -n ecommerce logs job/<job-name>
-
+```
 ## One-shot Rerun Script
 
 This repo includes a helper script to re-run the full pipeline end-to-end with fresh Jobs (because our Job manifests use `metadata.generateName`).
@@ -360,7 +367,6 @@ The script assumes the namespace is ecommerce and that all infra (MinIO/Postgres
 
 ## Cleanup
 ```bash
-Copy code
 kind delete cluster --name ecommerce-pipeline
 ```
 
