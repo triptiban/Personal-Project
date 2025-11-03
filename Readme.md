@@ -391,10 +391,10 @@ GitHub Actions – Continuous Integration for image builds
 
 ## Summary
 
-Implements required stages:
-Extract → Load → Transform → Export
+Implements required stages:  
+**Extract → Load → Transform → Export**  
 
-✅ Fully containerized data pipeline
-✅ Modular Python + dbt + Kubernetes architecture
-✅ CI/CD integrated via GitHub Actions
-✅ Local reproducibility using kind + kubectl
+✅ Fully containerized data pipeline  
+✅ Modular Python + dbt + Kubernetes architecture  
+✅ CI/CD integrated via GitHub Actions  
+✅ Local reproducibility using `kind` + `kubectl`  
