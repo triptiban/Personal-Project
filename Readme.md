@@ -231,7 +231,7 @@ Port-forward for DBeaver or psql:
 kubectl -n ecommerce port-forward svc/postgres 5432:5432
 ```
 
-Connect using:
+## Connect using:
 
 Host: 127.0.0.1
 Port: 5432
