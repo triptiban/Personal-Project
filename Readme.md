@@ -261,7 +261,7 @@ kubectl -n ecommerce port-forward svc/postgres 5432:5432
 
 ---
 
-## ▶️ Run dbt locally (optional)
+##  Run dbt locally (optional)
 
 ```bash
 docker run --rm -it -p 8080:8080 \
@@ -271,7 +271,10 @@ docker run --rm -it -p 8080:8080 \
 ```
 Open http://localhost:8080 to browse dbt docs.
 
-### Example Queries
+
+##  Example Queries
+
+```sql
 -- Top 10 products by revenue
 SELECT p.title, SUM(s.line_amount) AS revenue
 FROM analytics.fct_sales s
@@ -287,6 +290,7 @@ JOIN analytics.fct_sales s ON s.customer_id = c.customer_id
 GROUP BY 1,2
 HAVING COUNT(DISTINCT s.cart_id) > 1
 ORDER BY orders DESC;
+```
 
 
 ## CI/CD Integration
