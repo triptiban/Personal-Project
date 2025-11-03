@@ -231,30 +231,38 @@ Port-forward for DBeaver or psql:
 kubectl -n ecommerce port-forward svc/postgres 5432:5432
 ```
 
-## Connect using:
+##  Connect using:
 
-Host: 127.0.0.1
-Port: 5432
-Database: warehouse_db
-User: warehouse
-Password: warehouse_pwd
-dbt Project (ecommerce_dbt/)
-Model Layers
-Layer	Purpose
-staging	Raw → typed & cleaned
-intermediate	Business join logic
-marts	Analytical tables (facts & dims)
+**Host:** 127.0.0.1  
+**Port:** 5432  
+**Database:** warehouse_db  
+**User:** warehouse  
+**Password:** warehouse_pwd  
 
-Key Models
-stg_products, stg_users, stg_carts, stg_cart_items
+---
 
-int_order_items, int_customers
+##  dbt Project (`ecommerce_dbt/`)
 
-dim_product, dim_customer, fct_sales (incremental)
+###  Model Layers
 
-Snapshots: snapshots/users_snapshot.sql, snapshots/products_snapshot.sql
+| Layer | Purpose |
+|-------|----------|
+| staging | Raw → typed & cleaned |
+| intermediate | Business join logic |
+| marts | Analytical tables (facts & dims) |
 
-Run dbt locally (optional)
+###  Key Models
+- `stg_products`, `stg_users`, `stg_carts`, `stg_cart_items`  
+- `int_order_items`, `int_customers`  
+- `dim_product`, `dim_customer`, `fct_sales` *(incremental)*  
+
+### Snapshots
+`users_snapshot.sql`, `products_snapshot.sql`
+
+---
+
+## ▶️ Run dbt locally (optional)
+
 ```bash
 docker run --rm -it -p 8080:8080 \
   -e PG_HOST=localhost -e PG_DB=warehouse_db \
@@ -263,9 +271,7 @@ docker run --rm -it -p 8080:8080 \
 ```
 Open http://localhost:8080 to browse dbt docs.
 
-🧾 Example Queries
-sql
-
+### Example Queries
 -- Top 10 products by revenue
 SELECT p.title, SUM(s.line_amount) AS revenue
 FROM analytics.fct_sales s
@@ -282,11 +288,11 @@ GROUP BY 1,2
 HAVING COUNT(DISTINCT s.cart_id) > 1
 ORDER BY orders DESC;
 
-CI/CD Integration
+
+## CI/CD Integration
 GitHub Actions: .github/workflows/ci.yml 
 
 GitLab 
-
 stages: [build, test, deploy, transform]
 
 build:
@@ -326,14 +332,7 @@ transform:
     - kubectl create -f loader/loader-job.yaml
     - kubectl create -f K8s/dbt-job.yaml
     - kubectl create -f K8s/exporter-job.yaml || true
-🩺 Observability
-readinessProbe and livenessProbe defined for Postgres & MinIO
 
-Logs:
-
-```bash
-kubectl -n ecommerce logs job/<job-name>
-```
 ## One-shot Rerun Script
 
 This repo includes a helper script to re-run the full pipeline end-to-end with fresh Jobs (because our Job manifests use `metadata.generateName`).
@@ -372,7 +371,7 @@ kind delete cluster --name ecommerce-pipeline
 
 ## Author
 
-Name: Tripti Bansal)
+Name: Tripti Bansal
 
 ## Tech Stack
 
