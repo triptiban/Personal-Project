@@ -292,9 +292,9 @@ ORDER BY orders DESC;
 ## CI/CD Integration
 GitHub Actions: .github/workflows/ci.yml 
 
-GitLab 
-stages: [build, test, deploy, transform]
+**GitLab (optional alternative):**
 
+```yaml
 build:
   stage: build
   image: docker:24
@@ -332,6 +332,7 @@ transform:
     - kubectl create -f loader/loader-job.yaml
     - kubectl create -f K8s/dbt-job.yaml
     - kubectl create -f K8s/exporter-job.yaml || true
+```
 
 ## One-shot Rerun Script
 
