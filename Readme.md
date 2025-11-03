@@ -98,17 +98,17 @@ yaml
 ### 1️⃣ Create a Kind cluster
 
 ```bash
-kind create cluster --name ecommerce
+kind create cluster --name ecommerce-pipeline
 Build and load Docker images
 docker build -t extractor:0.2 ./extractor
 docker build -t loader:0.2 ./loader
 docker build -t exporter:0.1 ./exporter
 docker build -t dbt-runner:0.1 -f dbt-runner/Dockerfile .
 
-kind load docker-image extractor:0.2 --name ecommerce
-kind load docker-image loader:0.2 --name ecommerce
-kind load docker-image exporter:0.1 --name ecommerce
-kind load docker-image dbt-runner:0.1 --name ecommerce
+kind load docker-image extractor:0.2 --name ecommerce-pipeline
+kind load docker-image loader:0.2 --name ecommerce-pipeline
+kind load docker-image exporter:0.1 --name ecommerce-pipeline
+kind load docker-image dbt-runner:0.1 --name ecommerce-pipeline
 
 Deployment & Execution
 
@@ -120,38 +120,37 @@ kubectl -n ecommerce apply -f K8s/postgres-secret.yaml
 kubectl -n ecommerce apply -f K8s/minio.yaml
 kubectl -n ecommerce apply -f K8s/postgres.yaml
 kubectl -n ecommerce apply -f K8s/postgres-init.yaml
+
 Run the Data Pipeline (Jobs)
 All Jobs use metadata.generateName, so you must use kubectl create (not apply).
 
 Extract — API → MinIO /raw/
 
-kubectl -n ecommerce create -f K8s/extractor-config.yaml
+kubectl -n ecommerce apply -f K8s/extractor-config.yaml
 kubectl -n ecommerce create -f K8s/extractor-job.yaml
-kubectl -n ecommerce logs -l app=extractor -f --since=1h
+LATEST_EXTRACTOR_JOB=$(kubectl -n ecommerce get jobs -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep '^extractor-job-' | sort | tail -1)
+kubectl -n ecommerce logs -f job/$LATEST_EXTRACTOR_JOB
+
+
 Load — MinIO /raw/ → Postgres raw.*
 
 kubectl -n ecommerce create -f loader/loader-job.yaml
-kubectl -n ecommerce logs -l app=loader -f --since=1h
+LATEST_LOADER_JOB=$(kubectl -n ecommerce get jobs -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+| grep '^loader-job-' | sort | tail -1)
+kubectl -n ecommerce logs -f job/$LATEST_LOADER_JOB
 
 Transform (dbt) — staging → intermediate → marts
 
 kubectl -n ecommerce create -f K8s/dbt-job.yaml
 kubectl -n ecommerce logs -l app=dbt -f --since=1h
+
 (Optional) Export — curated marts → MinIO /curated/
 
 kubectl -n ecommerce create -f K8s/exporter-job.yaml
-kubectl -n ecommerce logs -l app=exporter -f --since=1h
-Re-running the pipeline
-Each Job creates a fresh run (unique name). To re-run cleanly:
+LATEST_EXPORTER_JOB=$(kubectl -n ecommerce get jobs -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+  | grep '^exporter-job-' | sort | tail -1)
+kubectl -n ecommerce logs -f job/$LATEST_EXPORTER_JOB
 
-kubectl -n ecommerce delete job -l 'app in (extractor,loader,dbt,exporter)' --ignore-not-found
-Then recreate the Jobs using the same commands above.
-
-Tear down everything (optional cleanup)
-
-kubectl -n ecommerce delete all -l app=minio
-kubectl -n ecommerce delete all -l app=postgres
-kubectl -n ecommerce delete job -l 'app in (extractor,loader,dbt,exporter)' --ignore-not-found
 Configuration & Secrets
 MinIO
 Defined in:
@@ -242,11 +241,11 @@ JOIN analytics.fct_sales s ON s.customer_id = c.customer_id
 GROUP BY 1,2
 HAVING COUNT(DISTINCT s.cart_id) > 1
 ORDER BY orders DESC;
-🧩 CI/CD Integration
-GitHub Actions: .github/workflows/ci.yml (already present)
 
-GitLab required by assignment — add .gitlab-ci.yml:
+CI/CD Integration
+GitHub Actions: .github/workflows/ci.yml 
 
+No GitLab 
 
 stages: [build, test, deploy, transform]
 
@@ -297,7 +296,7 @@ bash
 kubectl -n ecommerce logs job/<job-name>
 Optional: integrate Prometheus annotations or Grafana dashboards
 
-## 🔁 One-shot Rerun Script
+## One-shot Rerun Script
 
 This repo includes a helper script to **re-run the full pipeline end-to-end** with fresh Jobs (because our Job manifests use `metadata.generateName`).
 
@@ -326,36 +325,6 @@ Non-zero exit code if any Job fails.
 Notes:
 
 The script assumes the namespace is ecommerce and that all infra (MinIO/Postgres/Secrets/ConfigMaps) has already been applied.
-
-If you edit Job YAMLs, the script will delete old Jobs and create new ones so you always get a clean run.
-
-bash
-Copy code
-
-If your script doesn’t already do the deletes/creates, here’s the core it should include (you can compare and adjust):
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-NS=${NS:-ecommerce}
-
-echo "Deleting old Jobs…"
-kubectl -n "$NS" delete job -l 'app in (extractor,loader,dbt,exporter)' --ignore-not-found
-
-echo "Creating fresh Jobs…"
-kubectl -n "$NS" create -f K8s/extractor-config.yaml
-kubectl -n "$NS" create -f K8s/extractor-job.yaml
-kubectl -n "$NS" create -f loader/loader-job.yaml
-kubectl -n "$NS" create -f K8s/dbt-job.yaml
-kubectl -n "$NS" create -f K8s/exporter-job.yaml || true
-
-echo "Tailing logs… (Ctrl+C to stop)"
-kubectl -n "$NS" logs -l app=extractor -f --since=1h || true
-kubectl -n "$NS" logs -l app=loader    -f --since=1h || true
-kubectl -n "$NS" logs -l app=dbt       -f --since=1h || true
-kubectl -n "$NS" logs -l app=exporter  -f --since=1h || true
-
 
 Cleanup
 bash

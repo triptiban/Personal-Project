@@ -16,6 +16,7 @@ PG_HOST = os.environ["PG_HOST"]
 PG_DB   = os.environ["PG_DB"]
 PG_USER = os.environ["PG_USER"]
 PG_PASS = os.environ["PG_PASS"]
+CURATED_PREFIX = os.getenv("CURATED_PREFIX", "ecommerce/curated")
 
 TABLES = ["analytics.dim_product", "analytics.dim_customer", "analytics.fct_sales"]
 
