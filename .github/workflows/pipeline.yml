@@ -1,0 +1,122 @@
+name: pipeline
+
+on:
+  workflow_dispatch: {}  # run manually when you want the full pipeline
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}
+  IMG_TAG: ci
+
+jobs:
+  # ------------------
+  # 1️⃣ Build (reuse your same build process)
+  # ------------------
+  build:
+    name: Build Docker images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push images
+        run: |
+          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/extractor:${{ env.IMG_TAG }} ./extractor
+          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/loader:${{ env.IMG_TAG }} ./loader
+          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/exporter:${{ env.IMG_TAG }} ./exporter
+          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/dbt-runner:${{ env.IMG_TAG }} -f dbt-runner/Dockerfile .
+
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/extractor:${{ env.IMG_TAG }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/loader:${{ env.IMG_TAG }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/exporter:${{ env.IMG_TAG }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/dbt-runner:${{ env.IMG_TAG }}
+
+  # ------------------
+  # 2️⃣ Test dbt (run deps/build/docs)
+  # ------------------
+  test:
+    name: Test dbt transformations
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run dbt in container
+        run: |
+          docker run --rm \
+            -v "$PWD/ecommerce_dbt:/work/ecommerce_dbt" \
+            -e PG_HOST='${{ secrets.PG_HOST }}' \
+            -e POSTGRES_DB='${{ secrets.PG_DB }}' \
+            -e POSTGRES_USER='${{ secrets.PG_USER }}' \
+            -e POSTGRES_PASSWORD='${{ secrets.PG_PASSWORD }}' \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/dbt-runner:${{ env.IMG_TAG }} \
+            bash -lc 'cd /work/ecommerce_dbt && dbt deps && dbt build && dbt docs generate'
+
+      - name: Upload dbt docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-docs
+          path: ecommerce_dbt/target
+
+  # ------------------
+  # 3️⃣ Deploy infra (K8s)
+  # ------------------
+  deploy:
+    name: Deploy to Kubernetes
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          printf "%s" "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+
+      - name: Apply K8s manifests
+        run: |
+          kubectl create namespace ecommerce || true
+          kubectl -n ecommerce apply -f K8s/minio-secret.yaml
+          kubectl -n ecommerce apply -f K8s/minio-config.yaml
+          kubectl -n ecommerce apply -f K8s/minio.yaml
+          kubectl -n ecommerce apply -f K8s/postgres-secret.yaml
+          kubectl -n ecommerce apply -f K8s/postgres.yaml
+          kubectl -n ecommerce apply -f K8s/postgres-init.yaml
+          kubectl -n ecommerce apply -f K8s/dbt-profiles.yaml || true
+
+  # ------------------
+  # 4️⃣ Run ETL Jobs
+  # ------------------
+  transform:
+    name: Run Extract/Load/Transform Jobs
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          printf "%s" "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+
+      - name: Create ETL Jobs
+        run: |
+          kubectl -n ecommerce create -f K8s/extractor-config.yaml || true
+          kubectl -n ecommerce create -f K8s/extractor-job.yaml
+          kubectl -n ecommerce create -f loader/loader-job.yaml
+          kubectl -n ecommerce create -f K8s/dbt-job.yaml
+          kubectl -n ecommerce create -f K8s/exporter-job.yaml || true
+
+      - name: Stream dbt logs
+        run: |
+          JOB=$(kubectl -n ecommerce get jobs -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep '^dbt-job-' | sort | tail -1)
+          if [ -n "$JOB" ]; then
+            kubectl -n ecommerce logs -f job/$JOB --tail=100 || true
+          fi

@@ -245,7 +245,7 @@ ORDER BY orders DESC;
 CI/CD Integration
 GitHub Actions: .github/workflows/ci.yml 
 
-No GitLab 
+GitLab 
 
 stages: [build, test, deploy, transform]
 
