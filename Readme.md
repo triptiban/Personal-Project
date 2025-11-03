@@ -358,10 +358,38 @@ Notes:
 
 The script assumes the namespace is ecommerce and that all infra (MinIO/Postgres/Secrets/ConfigMaps) has already been applied.
 
-Cleanup
-bash
+## Cleanup
+```bash
 Copy code
 kind delete cluster --name ecommerce-pipeline
-Author: Tripti Bansal
-Tech Stack: Kubernetes • Python • MinIO • PostgreSQL • dbt • Docker 
-Implements required stages: Extract → Load → Transform → Export.
+```
+
+## Author
+
+Name: Tripti Bansal)
+
+## Tech Stack
+
+Kubernetes – Orchestration of MinIO, Postgres, and pipeline jobs
+
+Python – Extractor, Loader, Exporter microservices
+
+MinIO – Data Lake (Raw + Curated layers)
+
+PostgreSQL – Data Warehouse (raw, staging, marts, snapshots)
+
+dbt – Transformations, tests, snapshots, and documentation
+
+Docker – Containerization of all components
+
+GitHub Actions – Continuous Integration for image builds
+
+## Summary
+
+Implements required stages:
+Extract → Load → Transform → Export
+
+✅ Fully containerized data pipeline
+✅ Modular Python + dbt + Kubernetes architecture
+✅ CI/CD integrated via GitHub Actions
+✅ Local reproducibility using kind + kubectl
