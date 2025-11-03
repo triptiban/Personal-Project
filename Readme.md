@@ -333,7 +333,7 @@ This repo includes a helper script to re-run the full pipeline end-to-end with f
 
 Script: `scripts/rerun-all.sh`
 
-**What it does:
+What it does:
 1. Deletes any completed Jobs for `extractor`, `loader`, `dbt`, `exporter`
 2. Recreates each Job (using `kubectl create`)
 3. Streams logs so you can watch progress
@@ -345,6 +345,7 @@ chmod +x scripts/rerun-all.sh
 
 # run it (assumes namespace "ecommerce")
 ./scripts/rerun-all.sh
+```
 Expected output:
 
 New Job names like extractor-job-xxxxx, loader-job-yyyyy, etc.
