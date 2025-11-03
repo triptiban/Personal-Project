@@ -7,7 +7,7 @@ Python for extraction, loading, and exporting
 
 dbt for transformations, testing, and snapshots
 
-Postgres as the data warehouse
+Postgres as the data warehouseß
 
 MinIO as the data lake (raw + curated zones)
 
@@ -326,20 +326,19 @@ Logs:
 bash
 
 kubectl -n ecommerce logs job/<job-name>
-Optional: integrate Prometheus annotations or Grafana dashboards
 
 ## One-shot Rerun Script
 
-This repo includes a helper script to **re-run the full pipeline end-to-end** with fresh Jobs (because our Job manifests use `metadata.generateName`).
+This repo includes a helper script to re-run the full pipeline end-to-end with fresh Jobs (because our Job manifests use `metadata.generateName`).
 
-**Script:** `scripts/rerun-all.sh`
+Script: `scripts/rerun-all.sh`
 
-**What it does:**
+**What it does:
 1. Deletes any completed Jobs for `extractor`, `loader`, `dbt`, `exporter`
 2. Recreates each Job (using `kubectl create`)
 3. Streams logs so you can watch progress
 
-**Usage:**
+Usage:
 ```bash
 # make it executable once
 chmod +x scripts/rerun-all.sh
