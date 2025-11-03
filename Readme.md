@@ -1,17 +1,22 @@
-# 🧱 End-to-End Data Pipeline on Kubernetes (MinIO → Postgres → dbt)
+Angi Practical 
+Project Overview
 
-This repository implements an end-to-end, containerized data pipeline that:
+This project implements a full end-to-end data engineering pipeline using:
 
-1. Extracts e-commerce data from a public API (`https://fakestoreapi.com`)
-2. Lands raw JSON files into MinIO (S3-compatible object storage)
-3. Loads that raw data into Postgres (`raw.*` schema)
-4. Transforms it using dbt (staging → intermediate → marts)
-5. (Optional) Exports curated tables back to MinIO  
-6. (Bonus) Includes Airflow orchestration for local runs
+Python for extraction, loading, and exporting
 
-All components run as Kubernetes workloads and are portable across local or cloud clusters.
+dbt for transformations, testing, and snapshots
 
----
+Postgres as the data warehouse
+
+MinIO as the data lake (raw + curated zones)
+
+Kubernetes for orchestration
+
+GitHub Actions for CI/CD automation
+
+The pipeline extracts data from the public API fakestoreapi.com
+, stages and transforms it with dbt, snapshots historical changes, and exports curated results back to MinIO.
 
 ## ⚙️ Architecture
 
@@ -66,32 +71,59 @@ yaml
 
 ---
 
-## 🗂️ Repository Layout
+## Components 
 
-K8s/ # Kubernetes manifests (MinIO, Postgres, Secrets, Jobs)
-extractor/ # Python app: API → MinIO (raw partitioned)
-loader/ # Python job: MinIO(raw) → Postgres(raw.* tables)
-ecommerce_dbt/ # dbt project (staging/intermediate/marts, tests, snapshots)
-dbt-runner/ # Docker image + profiles.yml for dbt
-exporter/ # Optional: export curated marts back to MinIO
-airflow-local/ # Optional: docker-compose Airflow setup
-.github/workflows/ci.yml# GitHub Actions pipeline
-scripts/ # Helper scripts (e.g., rerun-all.sh)
-
-yaml
-
+| Stage         | Tool                       | Description                                             |
+| ------------- | -------------------------- | ------------------------------------------------------- |
+| **Extract**   | `extractor/`               | Pulls data from FakeStore API → MinIO (`raw/`)          |
+| **Load**      | `loader/`                  | Loads JSON data from MinIO/raw → Postgres (`raw.*`)     |
+| **Transform** | `dbt-runner`               | Runs dbt models, tests, and snapshots                   |
+| **Export**    | `exporter/`                | Writes curated tables (analytics) back to MinIO/curated |
+| **Infra**     | `K8s/`                     | Kubernetes manifests for MinIO, Postgres, Jobs, Secrets |
+| **CI/CD**     | `.github/workflows/ci.yml` | Builds Docker images on every push                      |
 
 ---
+## CI/CD (GitHub)
 
-## Prerequisites
+This project uses GitHub Actions instead of GitLab CI/CD.
 
-- Docker 24+
-- Kubernetes (e.g. Kind, Minikube, or K3D)
-- `kubectl` CLI  
-- Optional: `helm` 
-- No local Python needed — everything runs in containers
+Current Workflow
 
----
+.github/workflows/ci.yml → builds all service images:
+
+extractor:ci
+
+loader:ci
+
+exporter:ci
+
+dbt-runner:ci
+
+Manual Execution
+
+Other stages (test, deploy, transform) are executed manually using:
+
+bash scripts/rerun-all.sh
+
+
+This script runs the entire pipeline on your local kind cluster.
+
+## dbt Project
+
+Folders: staging/, intermediate/, marts/, snapshots/
+
+Snapshots: users_snapshot, products_snapshot
+
+Tests: Built-in dbt schema tests (unique, not_null)
+
+Docs: Generate manually
+
+cd ecommerce_dbt
+dbt deps && dbt build && dbt docs generate
+dbt docs serve
+
+
+→ opens http://localhost:8080
 
 ## Quickstart (Local Kubernetes)
 
@@ -329,6 +361,7 @@ The script assumes the namespace is ecommerce and that all infra (MinIO/Postgres
 Cleanup
 bash
 Copy code
-kind delete cluster --name ecommerce
+kind delete cluster --name ecommerce-pipeline
 Author: Tripti Bansal
-Tech Stack: Kubernetes • Python • MinIO • PostgreSQL • dbt • Docker • Airflow (optional)
+Tech Stack: Kubernetes • Python • MinIO • PostgreSQL • dbt • Docker 
+Implements required stages: Extract → Load → Transform → Export.
